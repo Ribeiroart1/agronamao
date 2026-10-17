@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Um Campo de Decisões</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: faixa de cabeçalho cor de terra, depois coluna única com 3 diagnósticos, gráfico da safra, assistente e próximos passos */
+:root{
+  --bg:#F5F6F0; --surface:#FFFFFF; --fg:#1E2419; --muted:#5D6656; --line:#DDE1D3;
+  --soil:#9C3F24; --soil-ink:#FFF4EE; --leaf:#3D6B2A; --sky:#2F6E9E; --sky-soft:#9CC3E0;
+  --ok:#2F7A3A; --warn:#B7791F; --bad:#B23A2B;
+  --display:"Archivo",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12150F; --surface:#1B2016; --fg:#E8ECE0; --muted:#A3AC98; --line:#2E3527;
+  --soil:#C4593A; --soil-ink:#1A0E09; --leaf:#7FB463; --sky:#6FA8D6; --sky-soft:#2F5677;
+  --ok:#6CC07A; --warn:#E3A64A; --bad:#E06B5B; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12150F; --surface:#1B2016; --fg:#E8ECE0; --muted:#A3AC98; --line:#2E3527;
+  --soil:#C4593A; --soil-ink:#1A0E09; --leaf:#7FB463; --sky:#6FA8D6; --sky-soft:#2F5677;
+  --ok:#6CC07A; --warn:#E3A64A; --bad:#E06B5B; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.55}
+.wrap{max-width:1040px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.band{background:var(--soil);color:var(--soil-ink)}
+header .wrap{padding-block:36px 32px;display:grid;gap:18px}
+.brand{font-family:var(--mono);font-size:13px;letter-spacing:.12em;text-transform:uppercase;opacity:.85}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(30px,5.4vw,52px);line-height:1.05;margin:0;text-wrap:balance;max-width:20ch}
+.lede{margin:0;max-width:62ch;opacity:.92}
+.picker{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.picker label{font-family:var(--mono);font-size:13px}
+select{font:inherit;font-weight:600;padding:9px 12px;border-radius:6px;border:2px solid var(--soil-ink);background:transparent;color:var(--soil-ink)}
+select option{color:#1E2419;background:#fff}
+select:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+.stamp{font-family:var(--mono);font-size:12px;opacity:.8}
+main .wrap{padding-block:28px 48px;display:grid;gap:36px}
+.notice{border:1px dashed var(--warn);color:var(--fg);padding:10px 14px;border-radius:6px;font-size:14px}
+h2{font-family:var(--display);font-weight:700;font-size:22px;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 16px;font-size:15px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px;display:grid;gap:10px;align-content:start;min-width:0}
+.card .k{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.pill{justify-self:start;font-weight:600;font-size:14px;padding:4px 10px;border-radius:999px;border:1.5px solid currentColor}
+.pill.ok{color:var(--ok)} .pill.warn{color:var(--warn)} .pill.bad{color:var(--bad)}
+.big{font-family:var(--display);font-weight:800;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+.big small{font-family:var(--body);font-size:15px;font-weight:500;color:var(--muted)}
+.card p{margin:0;font-size:15px}
+.wins{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-family:var(--mono);font-size:14px}
+.chart-box{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;overflow-x:auto}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.stats{display:flex;flex-wrap:wrap;gap:28px;margin-bottom:12px}
+.stats div{display:grid}
+.stats b{font-family:var(--display);font-size:24px;font-variant-numeric:tabular-nums}
+.stats span{font-size:13px;color:var(--muted)}
+.chat{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:grid;gap:12px}
+.log{display:grid;gap:10px;max-height:340px;overflow-y:auto}
+.msg{max-width:78ch;padding:10px 14px;border-radius:10px;font-size:15px}
+.msg.me{justify-self:end;background:var(--leaf);color:var(--bg)}
+.msg.bot{justify-self:start;background:var(--bg);border:1px solid var(--line)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{font:inherit;font-size:14px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer}
+.chips button:hover{border-color:var(--leaf)}
+form{display:flex;gap:8px}
+form input{flex:1;min-width:0;font:inherit;padding:10px 12px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
+form button{font:inherit;font-weight:600;padding:10px 16px;border-radius:6px;border:0;background:var(--soil);color:var(--soil-ink);cursor:pointer}
+.road{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:0;padding:0;list-style:none}
+.road li{border-top:3px solid var(--leaf);padding-top:10px}
+.road b{display:block;font-family:var(--display)}
+.road span{font-size:14px;color:var(--muted)}
+.tbl{width:100%;border-collapse:collapse;font-size:14px;min-width:620px}
+.tbl th{text-align:left;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;padding:8px;border-bottom:1px solid var(--line)}
+.tbl td{padding:9px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.tbl tbody tr{cursor:pointer}.tbl tbody tr:hover{background:var(--bg)}
+.tbl tr.cur td:first-child{font-weight:700;color:var(--soil)}
+.bar{display:inline-block;height:8px;border-radius:4px;vertical-align:middle;margin-right:8px}
+.note{font-size:13px;color:var(--muted);margin:8px 0 0}
+.claim{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:grid;gap:16px}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.fields label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+.fields input,.fields select.plain{font:inherit;color:var(--fg);padding:8px 10px;border-radius:6px;border:1px solid var(--line);background:var(--bg)}
+.report{border-left:4px solid var(--soil);padding:4px 0 4px 16px;display:grid;gap:8px;font-size:15px}
+.report .row{display:flex;flex-wrap:wrap;gap:24px}
+.report .row div{display:grid}
+.report b{font-family:var(--display);font-size:20px;font-variant-numeric:tabular-nums}
+.report span{font-size:13px;color:var(--muted)}
+.report p{margin:0;max-width:70ch}
+.iagro{display:grid;grid-template-columns:120px 1fr;gap:18px;align-items:start;margin-bottom:14px}
+.iagro>div{min-width:0}
+.farmer{width:120px;height:auto}
+@media (max-width:520px){.iagro{grid-template-columns:1fr}.farmer{width:96px}}
+.wa{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px;white-space:pre-wrap;max-width:62ch}
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.price{font-family:var(--display);font-size:26px;color:var(--soil)}
+.price small{font-size:14px;color:var(--muted);font-weight:500}
+footer{border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+footer .wrap{padding-block:20px}
+@media (prefers-reduced-motion:no-preference){.card{transition:border-color .2s}.card:hover{border-color:var(--muted)}}
+</style>
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+<header class="band"><div class="wrap">
+  <div class="brand">Agronamão · MVP · Goiás</div>
+  <h1>Um Campo de Decisões</h1>
+  <p class="lede">Chuva acumulada, umidade para o plantio da soja, janela de pulverização e risco de veranico por município. Dados meteorológicos reais, atualizados a cada visita. Para bancos e seguradoras: carteira de risco por município e laudo climático de sinistro.</p>
+  <div class="picker">
+    <label for="mun">Município</label>
+    <select id="mun"></select>
+    <span class="stamp" id="stamp">carregando…</span>
+  </div>
+</div></header>
+
+<main><div class="wrap">
+  <div class="notice" id="notice" hidden>Não foi possível buscar os dados ao vivo neste ambiente. Os números abaixo são um exemplo ilustrativo; publicado no GitHub Pages, o painel usa dados reais do Open-Meteo.</div>
+
+  <section>
+    <h2>Diagnóstico de hoje</h2>
+    <p class="sub" id="diag-sub">Três respostas que o produtor quer antes de sair para a lavoura.</p>
+    <div class="cards">
+      <article class="card"><span class="k">Plantio da soja</span><span class="pill" id="pl-pill">—</span><div class="big" id="pl-big">—</div><p id="pl-txt"></p></article>
+      <article class="card"><span class="k">Pulverização · próximas 48 h</span><span class="pill" id="pu-pill">—</span><ul class="wins" id="pu-list"></ul><p id="pu-txt"></p></article>
+      <article class="card"><span class="k">Risco de veranico · 16 dias</span><span class="pill" id="ve-pill">—</span><div class="big" id="ve-big">—</div><p id="ve-txt"></p></article>
+    </div>
+  </section>
+
+  <section>
+    <h2>Chuva da safra 2026/27</h2>
+    <p class="sub">Últimos 30 dias observados e previsão para os próximos 16, em milímetros por dia.</p>
+    <div class="chart-box">
+      <div class="stats">
+        <div><b id="st-safra">—</b><span>mm desde 1º de setembro</span></div>
+        <div><b id="st-7d">—</b><span>mm nos últimos 7 dias</span></div>
+        <div><b id="st-prev">—</b><span>mm previstos em 16 dias</span></div>
+        <div><b id="st-bal">—</b><span>balanço hídrico 14 dias (chuva − ET₀)</span></div>
+      </div>
+      <svg id="chart" role="img" aria-label="Gráfico de chuva diária" style="display:block;width:100%;min-width:620px;height:auto"></svg>
+      <div class="legend"><span><i style="background:var(--sky)"></i>observado</span><span><i style="background:var(--sky-soft)"></i>previsão</span><span><i style="background:var(--soil)"></i>hoje</span></div>
+    </div>
+  </section>
+
+  <section id="carteira">
+    <h2>Carteira de risco climático</h2>
+    <p class="sub">Visão para bancos, cooperativas de crédito e seguradoras: todos os municípios monitorados, ordenados pelo índice de risco. Clique numa linha para abrir o município.</p>
+    <div class="chart-box">
+      <table class="tbl" id="tbl">
+        <thead><tr><th>Município</th><th>Safra (mm)</th><th>10 dias (mm)</th><th>Maior seca 30d</th><th>Veranico previsto</th><th>Índice</th></tr></thead>
+        <tbody><tr><td colspan="6">carregando…</td></tr></tbody>
+      </table>
+    </div>
+    <p class="note">Índice de 0 a 100 combina chuva acumulada da safra, dias seguidos sem chuva observados e previstos. Pesos ilustrativos, a calibrar com histórico de sinistros.</p>
+  </section>
+
+  <section id="laudo">
+    <h2>Laudo climático para sinistro</h2>
+    <p class="sub">Para o perito ou analista de seguro: informe a lavoura e o painel verifica se houve evento climático no período, com estimativa de perda.</p>
+    <div class="claim">
+      <form id="claim" class="fields">
+        <label>Data de plantio<input type="date" id="c-date"></label>
+        <label>Cultura<select id="c-crop" class="plain"><option value="soja">Soja</option><option value="milho">Milho</option></select></label>
+        <label>Área (ha)<input type="number" id="c-area" value="500" min="1"></label>
+        <label>Produtividade esperada (sc/ha)<input type="number" id="c-prod" value="62" min="1"></label>
+        <label>Preço (R$/sc)<input type="number" id="c-price" value="118" min="1"></label>
+        <label>Nível de cobertura (%)<input type="number" id="c-cov" value="70" min="10" max="100"></label>
+      </form>
+      <div class="report" id="report"></div>
+      <div class="chips"><button type="button" id="copy">Copiar laudo</button><span class="note" id="copied"></span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Converse com o IAGRO</h2>
+    <div class="iagro">
+      <svg class="farmer" viewBox="0 0 120 140" role="img" aria-label="IAGRO, o agricultor assistente">
+        <ellipse cx="60" cy="132" rx="40" ry="5" fill="var(--line)"/>
+        <path d="M22 132 Q24 92 60 88 Q96 92 98 132 Z" fill="var(--leaf)"/>
+        <path d="M48 90 L60 108 L72 90" fill="none" stroke="var(--bg)" stroke-width="3"/>
+        <rect x="52" y="78" width="16" height="14" rx="4" fill="#D9A27A"/>
+        <circle cx="60" cy="62" r="22" fill="#E2B08A"/>
+        <circle cx="52" cy="62" r="2.6" fill="#2B1D14"/><circle cx="68" cy="62" r="2.6" fill="#2B1D14"/>
+        <path d="M51 71 Q60 78 69 71" fill="none" stroke="#2B1D14" stroke-width="2.4" stroke-linecap="round"/>
+        <ellipse cx="60" cy="45" rx="42" ry="8" fill="#D8B45A"/>
+        <path d="M36 45 Q38 22 60 21 Q82 22 84 45 Z" fill="#E6C66E"/>
+        <rect x="37" y="38" width="46" height="5" fill="var(--soil)"/>
+        <path d="M95 104 q8 -14 0 -26 q-10 10 0 26 Z" fill="var(--leaf)"/><line x1="95" y1="104" x2="95" y2="120" stroke="var(--leaf)" stroke-width="2.5"/>
+      </svg>
+      <div>
+        <p class="sub" style="margin:0 0 8px">O IAGRO é o assistente da Agronamão no WhatsApp. Toda manhã ele manda o boletim da fazenda e responde perguntas em linguagem natural. Abaixo, uma prévia com respostas por regras sobre o município escolhido.</p>
+        <div class="wa" id="boletim"></div>
+        <div class="chips"><button type="button" id="copyb">Copiar boletim</button><span class="note" id="copiedb"></span></div>
+      </div>
+    </div>
+    <div class="chat">
+      <div class="log" id="log" aria-live="polite"></div>
+      <div class="chips" id="chips"></div>
+      <form id="ask"><input id="q" placeholder="Ex.: dá para plantar soja esta semana?" autocomplete="off"><button type="submit">Perguntar</button></form>
+    </div>
+  </section>
+
+  <section id="parametrico">
+    <h2>Simulador de seguro paramétrico</h2>
+    <p class="sub">Produto para seguradoras e cooperativas: a apólice paga automaticamente quando a chuva fica abaixo de um gatilho, sem vistoria. Ajuste os parâmetros e veja quais municípios acionariam o pagamento hoje.</p>
+    <div class="claim">
+      <form id="param" class="fields">
+        <label>Janela de observação (dias)<input type="number" id="p-win" value="30" min="7" max="60"></label>
+        <label>Gatilho: chuva mínima (mm)<input type="number" id="p-trig" value="90" min="5"></label>
+        <label>Valor segurado por município (R$)<input type="number" id="p-val" value="1000000" min="1000" step="1000"></label>
+      </form>
+      <div class="chart-box" style="padding:0;border:0"><table class="tbl" id="ptbl"><thead><tr><th>Município</th><th>Chuva na janela</th><th>Situação</th><th>Pagamento</th></tr></thead><tbody></tbody></table></div>
+      <p class="note" id="ptot"></p>
+    </div>
+  </section>
+
+  <section id="rentabilidade">
+    <h2>Rentabilidade da safra</h2>
+    <p class="sub">Para o produtor e para o analista de crédito: margem por hectare, ponto de equilíbrio e o efeito de uma quebra climática.</p>
+    <div class="claim">
+      <form id="calc" class="fields">
+        <label>Área (ha)<input type="number" id="r-area" value="500" min="1"></label>
+        <label>Custo de produção (R$/ha)<input type="number" id="r-cost" value="5200" min="0"></label>
+        <label>Produtividade esperada (sc/ha)<input type="number" id="r-prod" value="62" min="1"></label>
+        <label>Preço de venda (R$/sc)<input type="number" id="r-price" value="118" min="1"></label>
+        <label>Quebra simulada (%)<input type="number" id="r-loss" value="15" min="0" max="100"></label>
+      </form>
+      <div class="report" id="calcout"></div>
+    </div>
+  </section>
+
+  <section id="planos">
+    <h2>Produtos e planos</h2>
+    <p class="sub">Como o mesmo motor de dados vira produtos para públicos diferentes. Valores de referência para validação.</p>
+    <div class="plans">
+      <article class="card"><span class="k">Produtor</span><b class="price">R$ 89<small>/mês</small></b><p>IAGRO no WhatsApp, boletim diário da fazenda, alertas de pulverização e veranico, calculadora de safra.</p></article>
+      <article class="card"><span class="k">Consultor e revenda</span><b class="price">R$ 490<small>/mês</small></b><p>Até 30 clientes, painel multifazenda, relatórios automáticos com a marca do consultor.</p></article>
+      <article class="card"><span class="k">Agronamão Risk · bancos e cooperativas</span><b class="price">Sob consulta</b><p>Carteira de risco climático, índice por município e por talhão via API na concessão e no monitoramento do crédito.</p></article>
+      <article class="card"><span class="k">Agronamão Laudo · seguradoras</span><b class="price">R$ 150<small>/laudo</small></b><p>Laudo climático de sinistro em minutos, com histórico, estimativa de quebra e indenização. Pacotes por volume.</p></article>
+      <article class="card"><span class="k">Paramétrico white label</span><b class="price">% do prêmio</b><p>Motor de gatilhos de chuva para seguradoras lançarem apólices paramétricas com a própria marca.</p></article>
+      <article class="card"><span class="k">Relatórios de safra</span><b class="price">R$ 49<small>/edição</small></b><p>Boletim regional de Goiás por cultura para tradings, revendas e imprensa agro.</p></article>
+    </div>
+  </section>
+
+  <section>
+    <h2>Próximas etapas</h2>
+    <p class="sub">O que entra depois da validação com produtores e consultores.</p>
+    <ul class="road">
+      <li><b>Boletim no WhatsApp</b><span>Resumo da fazenda toda manhã e perguntas em linguagem natural.</span></li>
+      <li><b>ZARC por cultura</b><span>Janelas de menor risco do MAPA cruzadas com a chuva real.</span></li>
+      <li><b>Talhões e satélite</b><span>NDVI Sentinel-2 por talhão desenhado no mapa.</span></li>
+      <li><b>Painel do consultor</b><span>Vários clientes, relatório automático com a marca do consultor.</span></li>
+      <li><b>API para bancos e seguradoras</b><span>Índice de risco por CPF/talhão no momento da concessão de crédito e da regulação de sinistro.</span></li>
+      <li><b>Seguro paramétrico</b><span>Gatilhos automáticos de chuva para indenização rápida, sem vistoria.</span></li>
+    </ul>
+  </section>
+</div></main>
+
+<footer><div class="wrap">Dados: Open-Meteo (previsão, histórico e ET₀ FAO). Regras de demonstração, não substituem recomendação agronômica. Agronamão © 2026.</div></footer>
+
+<script>
+const MUN=[["Rio Verde",-17.79,-50.92],["Jataí",-17.88,-51.72],["Mineiros",-17.57,-52.55],["Chapadão do Céu",-18.40,-52.55],["Montividiu",-17.44,-51.17],["Paraúna",-16.95,-50.45],["Cristalina",-16.77,-47.61],["Luziânia",-16.25,-47.95],["Formosa",-15.54,-47.33],["Catalão",-18.17,-47.95],["Itumbiara",-18.42,-49.21],["Goiânia",-16.68,-49.25],["Porangatu",-13.44,-49.15]];
+const PAST=60, FC=16;
+const $=id=>document.getElementById(id);
+const sel=$("mun");
+MUN.forEach((m,i)=>{const o=document.createElement("option");o.value=i;o.textContent=m[0];sel.appendChild(o)});
+try{const s=localStorage.getItem("cc_mun");if(s!==null)sel.value=s}catch(e){}
+let D=null;
+const fmt=n=>Math.round(n).toLocaleString("pt-BR");
+const dlabel=s=>{const [y,m,d]=s.split("-");return d+"/"+m};
+
+function fake(lat){ // dados ilustrativos determinísticos
+  const days=[],now=new Date();let seed=Math.abs(lat*1000)|0;const r=()=>(seed=(seed*9301+49297)%233280)/233280;
+  for(let i=-PAST;i<FC;i++){const d=new Date(now);d.setDate(d.getDate()+i);days.push(d.toISOString().slice(0,10))}
+  const p=days.map((_,i)=>{const k=(i-PAST+40)/56;const base=Math.max(0,k)*14;return r()<0.15+Math.min(.45,k*.4)?+(base*r()*2).toFixed(1):0});
+  const hourly={time:[],w:[],rh:[],t:[],pp:[]};const h0=new Date();h0.setMinutes(0,0,0);
+  for(let i=0;i<48;i++){const d=new Date(h0.getTime()+i*36e5);const hr=d.getHours();hourly.time.push(d.toISOString());hourly.w.push(4+8*Math.abs(Math.sin((hr-3)/7))*r()+2);hourly.rh.push(85-40*Math.sin(Math.PI*Math.max(0,hr-6)/14));hourly.t.push(20+12*Math.sin(Math.PI*Math.max(0,hr-6)/14));hourly.pp.push(r()*50)}
+  return {days,p,et0:days.map(()=>4.5+r()),hourly,fake:true};
+}
+
+async function load(i){
+  const [name,lat,lon]=MUN[i];
+  $("stamp").textContent="carregando "+name+"…";
+  const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_sum,et0_fao_evapotranspiration&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation_probability&past_days=${PAST}&forecast_days=${FC}&timezone=America%2FSao_Paulo`;
+  try{
+    const r=await fetch(url);if(!r.ok)throw 0;const j=await r.json();
+    const nowISO=new Date().toISOString().slice(0,13);
+    let start=j.hourly.time.findIndex(t=>t>=new Date(Date.now()-3*36e5).toLocaleString("sv-SE",{timeZone:"America/Sao_Paulo"}).slice(0,13).replace(" ","T"));if(start<0)start=0;
+    const sl=a=>a.slice(start,start+48);
+    D={days:j.daily.time,p:j.daily.precipitation_sum.map(v=>v||0),et0:j.daily.et0_fao_evapotranspiration.map(v=>v||0),
+       hourly:{time:sl(j.hourly.time),t:sl(j.hourly.temperature_2m),rh:sl(j.hourly.relative_humidity_2m),w:sl(j.hourly.wind_speed_10m),pp:sl(j.hourly.precipitation_probability).map(v=>v??0)},fake:false};
+  }catch(e){D=fake(lat)}
+  $("notice").hidden=!D.fake;
+  D.name=name;
+  $("stamp").textContent=(D.fake?"exemplo · ":"atualizado ")+new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
+  render();
+}
+
+function analyze(){
+  const t=PAST; // índice de hoje
+  const obs=D.p.slice(0,t), fc=D.p.slice(t);
+  const yr=D.days[t].slice(0,4);
+  let safra=0;D.days.slice(0,t).forEach((d,k)=>{if(d>=yr+"-09-01")safra+=obs[k]});
+  const sum=a=>a.reduce((x,y)=>x+y,0);
+  const d7=sum(obs.slice(-7)), d10=sum(obs.slice(-10)), prev=sum(fc), prev7=sum(fc.slice(0,7));
+  const bal=sum(obs.slice(-14))-sum(D.et0.slice(t-14,t));
+  // plantio
+  let pl;
+  if(d10>=50||(safra>=90&&d7>=20)) pl={c:"ok",s:"Umidade suficiente",txt:`Choveu ${fmt(d10)} mm nos últimos 10 dias. O solo deve estar em condição de plantio; confira a umidade no talhão antes de entrar com a plantadeira.`};
+  else if(d10+prev7>=50) pl={c:"warn",s:"Aguardar alguns dias",txt:`Acumulado de ${fmt(d10)} mm em 10 dias ainda é pouco, mas a previsão traz ${fmt(prev7)} mm na semana. Vale esperar a chuva firmar.`};
+  else pl={c:"bad",s:"Solo seco",txt:`Só ${fmt(d10)} mm em 10 dias e ${fmt(prev7)} mm previstos na semana. Plantar agora aumenta o risco de falha de estande.`};
+  pl.big=fmt(d10);
+  // veranico
+  let run=0,mx=0;fc.forEach(v=>{if(v<2){run++;mx=Math.max(mx,run)}else run=0});
+  const ve=mx>=10?{c:"bad",s:"Risco alto"}:mx>=6?{c:"warn",s:"Risco moderado"}:{c:"ok",s:"Risco baixo"};
+  ve.big=mx;ve.txt=mx>=6?`Sequência de até ${mx} dias com menos de 2 mm prevista. Atenção a lavouras recém-emergidas.`:`A previsão não mostra sequências longas sem chuva nas próximas duas semanas.`;
+  // pulverização
+  const H=D.hourly,ok=H.time.map((_,k)=>H.w[k]>=3&&H.w[k]<=10&&H.rh[k]>=55&&H.t[k]<=30&&H.pp[k]<30);
+  const wins=[];let s=null;ok.forEach((v,k)=>{if(v&&s===null)s=k;if((!v||k===ok.length-1)&&s!==null){const e=v?k:k-1;if(e-s>=1)wins.push([s,e]);s=null}});
+  const hh=k=>{const d=new Date(H.time[k]);return d.toLocaleDateString("pt-BR",{weekday:"short"}).replace(".","")+" "+String(new Date(H.time[k]).getHours()).padStart(2,"0")+"h"};
+  const pu=wins.length?{c:"ok",s:wins.length+" janela(s) favorável(is)"}:{c:"bad",s:"Sem janela segura"};
+  pu.list=wins.slice(0,3).map(([a,b])=>`${hh(a)} → ${String(new Date(H.time[b]).getHours()+1).padStart(2,"0")}h`);
+  pu.txt=wins.length?"Vento entre 3 e 10 km/h, umidade acima de 55%, temperatura até 30 °C e baixa chance de chuva.":"Vento, calor, ar seco ou chuva prevista fora dos limites para aplicação nas próximas 48 horas.";
+  return {safra,d7,prev,bal,pl,ve,pu,mx,prev7};
+}
+
+function setPill(id,o){const e=$(id);e.className="pill "+o.c;e.textContent=o.s}
+function render(){
+  const A=analyze();D.A=A;
+  $("diag-sub").textContent=`${D.name}: três respostas que o produtor quer antes de sair para a lavoura.`;
+  setPill("pl-pill",A.pl);$("pl-big").innerHTML=A.pl.big+" <small>mm em 10 dias</small>";$("pl-txt").textContent=A.pl.txt;
+  setPill("ve-pill",A.ve);$("ve-big").innerHTML=A.ve.big+" <small>dias seguidos sem chuva</small>";$("ve-txt").textContent=A.ve.txt;
+  setPill("pu-pill",A.pu);$("pu-list").innerHTML=A.pu.list.map(x=>`<li>${x}</li>`).join("");$("pu-txt").textContent=A.pu.txt;
+  $("st-safra").textContent=fmt(A.safra);$("st-7d").textContent=fmt(A.d7);$("st-prev").textContent=fmt(A.prev);$("st-bal").textContent=(A.bal>0?"+":"")+fmt(A.bal);
+  drawChart();claim();drawPortfolio();boletim();
+  $("log").innerHTML="";bot(`Olá! Sou o IAGRO. Estou olhando os dados de ${D.name}. Pergunte sobre plantio, pulverização, chuva ou veranico.`);
+}
+
+function drawChart(){
+  const from=PAST-30,arr=D.p.slice(from),days=D.days.slice(from);
+  const W=900,Hh=260,L=40,R=10,T=14,B=34,cw=(W-L-R)/arr.length;
+  const max=Math.max(20,Math.ceil(Math.max(...arr)/10)*10);
+  const y=v=>T+(Hh-T-B)*(1-v/max);
+  const css=getComputedStyle(document.documentElement);
+  let g="";
+  for(let v=0;v<=max;v+=max/4){g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${Math.round(v)}</text>`}
+  arr.forEach((v,k)=>{const fc=k>=30;const x=L+k*cw+1;const h=Math.max(0,y(0)-y(v));
+    g+=`<rect x="${x}" y="${y(v)}" width="${cw-2}" height="${h}" rx="1.5" fill="${fc?"var(--sky-soft)":"var(--sky)"}"><title>${dlabel(days[k])}: ${v.toFixed(1)} mm</title></rect>`;
+    if(k%5===0||k===30)g+=`<text x="${x+cw/2}" y="${Hh-12}" text-anchor="middle" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${dlabel(days[k])}</text>`});
+  const tx=L+30*cw;g+=`<line x1="${tx}" x2="${tx}" y1="${T}" y2="${y(0)}" stroke="var(--soil)" stroke-width="2" stroke-dasharray="4 3"/><text x="${tx+4}" y="${T+10}" font-size="11" fill="var(--soil)" font-family="IBM Plex Mono,monospace">hoje</text>`;
+  const svg=$("chart");svg.setAttribute("viewBox",`0 0 ${W} ${Hh}`);svg.innerHTML=g;
+}
+
+function maxDry(a){let r=0,m=0;a.forEach(v=>{if(v<2){r++;m=Math.max(m,r)}else r=0});return m}
+const brl=n=>n.toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0});
+
+// Carteira de risco
+let PORT=null;
+async function loadPortfolio(){
+  const lat=MUN.map(m=>m[1]).join(","),lon=MUN.map(m=>m[2]).join(",");
+  try{
+    const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_sum&past_days=${PAST}&forecast_days=${FC}&timezone=America%2FSao_Paulo`);
+    if(!r.ok)throw 0;let j=await r.json();if(!Array.isArray(j))j=[j];
+    PORT=j.map(x=>({days:x.daily.time,p:x.daily.precipitation_sum.map(v=>v||0)}));
+  }catch(e){PORT=MUN.map(m=>{const f=fake(m[1]);return {days:f.days,p:f.p}})}
+  drawPortfolio();
+}
+function drawPortfolio(){
+  if(!PORT)return;
+  const rows=PORT.map((x,i)=>{
+    const obs=x.p.slice(0,PAST),fc=x.p.slice(PAST),yr=x.days[PAST].slice(0,4);
+    let safra=0;x.days.slice(0,PAST).forEach((d,k)=>{if(d>=yr+"-09-01")safra+=obs[k]});
+    const d10=obs.slice(-10).reduce((a,b)=>a+b,0),dObs=maxDry(obs.slice(-30)),dFc=maxDry(fc);
+    const score=Math.round(Math.min(100,Math.max(0,(150-safra)*0.25)+dObs*1.6+dFc*2.8+(d10<20?10:0)));
+    return {i,safra,d10,dObs,dFc,score};
+  }).sort((a,b)=>b.score-a.score);
+  const col=s=>s>=60?"var(--bad)":s>=35?"var(--warn)":"var(--ok)";
+  param();
+  $("tbl").tBodies[0].innerHTML=rows.map(r=>`<tr data-i="${r.i}" class="${r.i==sel.value?"cur":""}"><td>${MUN[r.i][0]}</td><td>${fmt(r.safra)}</td><td>${fmt(r.d10)}</td><td>${r.dObs} dias</td><td>${r.dFc} dias</td><td><span class="bar" style="width:${Math.max(4,r.score*0.7)}px;background:${col(r.score)}"></span><b style="color:${col(r.score)}">${r.score}</b></td></tr>`).join("");
+}
+$("tbl").addEventListener("click",e=>{const tr=e.target.closest("tr[data-i]");if(!tr)return;sel.value=tr.dataset.i;sel.dispatchEvent(new Event("change"));window.scrollTo({top:0,behavior:"smooth"})});
+
+// Laudo de sinistro
+(function(){const t=new Date(),d=new Date();d.setDate(t.getDate()-35);const mn=new Date();mn.setDate(t.getDate()-PAST+1);
+  $("c-date").value=d.toISOString().slice(0,10);$("c-date").min=mn.toISOString().slice(0,10);$("c-date").max=t.toISOString().slice(0,10)})();
+let LAUDO="";
+function claim(){
+  if(!D)return;
+  const pd=$("c-date").value,crop=$("c-crop").value,area=+$("c-area").value||0,prod=+$("c-prod").value||0,price=+$("c-price").value||0,cov=(+$("c-cov").value||0)/100;
+  let s=D.days.indexOf(pd);if(s<0||s>=PAST)s=Math.max(0,PAST-30);
+  const rain=D.p.slice(s,PAST),et=D.et0.slice(s,PAST),n=rain.length;
+  const R=rain.reduce((a,b)=>a+b,0),E=et.reduce((a,b)=>a+b,0),md=maxDry(rain),ex=rain.filter(v=>v>=50).length,ratio=E?R/E:1;
+  let ev="Nenhum evento climático relevante",q=0,c="ok";
+  if(md>=12||(ratio<0.5&&n>=15)){ev="Seca / veranico";q=Math.min(70,Math.max(0,(md-7)*4)+Math.max(0,(0.6-ratio))*40);c="bad"}
+  else if(ex>=2){ev="Excesso de chuva";q=Math.min(30,ex*8);c="warn"}
+  else if(md>=8){ev="Estresse hídrico moderado";q=(md-7)*3;c="warn"}
+  q=Math.round(q);
+  const est=prod*(1-q/100),gar=prod*cov,ind=Math.max(0,gar-est)*area*price;
+  const nm=crop==="soja"?"Soja":"Milho";
+  $("report").innerHTML=`<p><b style="color:var(--${c})">${ev}</b></p>
+  <div class="row"><div><b>${n}</b><span>dias analisados</span></div><div><b>${fmt(R)} mm</b><span>chuva no período</span></div><div><b>${fmt(E)} mm</b><span>demanda (ET₀)</span></div><div><b>${md}</b><span>maior sequência seca</span></div><div><b>${ex}</b><span>dias com ≥ 50 mm</span></div></div>
+  <div class="row"><div><b>${q}%</b><span>quebra estimada</span></div><div><b>${est.toFixed(1)} sc/ha</b><span>produtividade estimada</span></div><div><b>${gar.toFixed(1)} sc/ha</b><span>produtividade garantida</span></div><div><b>${brl(ind)}</b><span>indenização potencial</span></div></div>
+  <p class="note">Estimativa de quebra por regra ilustrativa. Na versão comercial, o modelo é calibrado com produtividade histórica e o laudo inclui estações próximas, satélite e ZARC.</p>`;
+  LAUDO=`LAUDO CLIMÁTICO – ${D.name}/GO
+Cultura: ${nm} | Plantio: ${pd.split("-").reverse().join("/")} | Área: ${fmt(area)} ha
+Período analisado: ${n} dias
+Chuva: ${fmt(R)} mm | ET0: ${fmt(E)} mm | Maior sequência seca: ${md} dias | Dias ≥50 mm: ${ex}
+Evento: ${ev}
+Quebra estimada: ${q}% | Produtividade estimada: ${est.toFixed(1)} sc/ha | Garantida (${Math.round(cov*100)}%): ${gar.toFixed(1)} sc/ha
+Indenização potencial: ${brl(ind)}
+Fonte: Open-Meteo. Gerado por Agronamão ${D.fake?"(DADOS DE EXEMPLO)":""}`;
+}
+$("claim").addEventListener("input",claim);
+$("claim").addEventListener("submit",e=>e.preventDefault());
+$("copy").addEventListener("click",()=>{navigator.clipboard.writeText(LAUDO).then(()=>{$("copied").textContent="Laudo copiado."}).catch(()=>{$("copied").textContent="Não foi possível copiar automaticamente."})});
+
+// Boletim IAGRO
+let BOL="";
+function boletim(){
+  const A=D.A,d=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit"});
+  BOL=`🌱 Bom dia! Aqui é o IAGRO, da Agronamão.
+Boletim de ${D.name}, ${d}
+
+🌧 Chuva: ${fmt(A.d7)} mm nos últimos 7 dias, ${fmt(A.prev7)} mm previstos na semana
+🚜 Plantio da soja: ${A.pl.s}
+💨 Pulverização: ${A.pu.list.length?"melhor janela "+A.pu.list[0]:"sem janela segura em 48 h"}
+☀ Veranico: ${A.ve.s.toLowerCase()} (${A.mx} dias secos seguidos na previsão)
+
+Responda com sua dúvida que eu te ajudo.`;
+  $("boletim").textContent=BOL;
+}
+$("copyb").addEventListener("click",()=>{navigator.clipboard.writeText(BOL).then(()=>{$("copiedb").textContent="Boletim copiado."}).catch(()=>{$("copiedb").textContent="Não foi possível copiar automaticamente."})});
+
+// Paramétrico
+function param(){
+  if(!PORT)return;
+  const w=Math.min(60,Math.max(7,+$("p-win").value||30)),g=+$("p-trig").value||1,v=+$("p-val").value||0;
+  let tot=0,n=0;
+  const rows=PORT.map((x,i)=>{const r=x.p.slice(PAST-w,PAST).reduce((a,b)=>a+b,0);const pay=r<g?Math.min(1,(g-r)/g)*v:0;if(pay>0){tot+=pay;n++}return {i,r,pay}}).sort((a,b)=>b.pay-a.pay||a.r-b.r);
+  $("ptbl").tBodies[0].innerHTML=rows.map(o=>`<tr><td>${MUN[o.i][0]}</td><td>${fmt(o.r)} mm</td><td><span class="pill ${o.pay>0?"bad":"ok"}">${o.pay>0?"Gatilho acionado":"Dentro do normal"}</span></td><td>${o.pay>0?brl(o.pay):"—"}</td></tr>`).join("");
+  $("ptot").textContent=`${n} de ${MUN.length} municípios acionariam o pagamento, total de ${brl(tot)}. Pagamento linear proporcional ao déficit em relação ao gatilho.`;
+}
+$("param").addEventListener("input",param);$("param").addEventListener("submit",e=>e.preventDefault());
+
+// Rentabilidade
+function calc(){
+  const a=+$("r-area").value||0,c=+$("r-cost").value||0,p=+$("r-prod").value||0,pr=+$("r-price").value||0,l=(+$("r-loss").value||0)/100;
+  const rec=p*pr,mg=rec-c,be=pr?c/pr:0,pq=p*(1-l),mq=pq*pr-c;
+  const col=v=>v>=0?"var(--ok)":"var(--bad)";
+  $("calcout").innerHTML=`<div class="row"><div><b>${brl(rec)}</b><span>receita por hectare</span></div><div><b style="color:${col(mg)}">${brl(mg)}</b><span>margem por hectare</span></div><div><b>${be.toFixed(1)} sc/ha</b><span>ponto de equilíbrio</span></div><div><b style="color:${col(mg)}">${brl(mg*a)}</b><span>margem total</span></div></div>
+  <div class="row"><div><b>${pq.toFixed(1)} sc/ha</b><span>com quebra de ${Math.round(l*100)}%</span></div><div><b style="color:${col(mq)}">${brl(mq)}</b><span>margem por hectare com quebra</span></div><div><b style="color:${col(mq)}">${brl(mq*a)}</b><span>margem total com quebra</span></div></div>
+  <p class="note">${mq<0?"Com essa quebra a safra fica abaixo do custo: é o cenário que o seguro e o crédito precisam cobrir.":"Mesmo com a quebra simulada a safra se paga, com folga de "+(pq-be).toFixed(1)+" sc/ha."}</p>`;
+}
+$("calc").addEventListener("input",calc);$("calc").addEventListener("submit",e=>e.preventDefault());calc();
+
+const log=$("log");
+function add(t,c){const d=document.createElement("div");d.className="msg "+c;d.textContent=t;log.appendChild(d);log.scrollTop=log.scrollHeight}
+const bot=t=>add(t,"bot");
+function answer(q){
+  const A=D.A,s=q.toLowerCase();
+  if(/plant|semear|soja|milho/.test(s))return `${A.pl.s}. ${A.pl.txt}`;
+  if(/pulveri|aplica|defensivo|spray/.test(s))return A.pu.list.length?`Sim. Melhores janelas: ${A.pu.list.join("; ")}. ${A.pu.txt}`:`Não recomendo nas próximas 48 h. ${A.pu.txt}`;
+  if(/veranico|seca|estiagem/.test(s))return `${A.ve.s}. ${A.ve.txt}`;
+  if(/sinistro|seguro|indeniz|perda|quebra/.test(s)){claim();return `Para a lavoura configurada no laudo, o painel indica: ${LAUDO.split("\n").find(l=>l.startsWith("Evento"))}. Veja os detalhes na seção de laudo climático.`}
+  if(/chuv|chov|mm/.test(s))return `Em ${D.name} choveu ${fmt(A.d7)} mm nos últimos 7 dias e ${fmt(A.safra)} mm desde 1º de setembro. A previsão traz ${fmt(A.prev)} mm nos próximos 16 dias, ${fmt(A.prev7)} mm na primeira semana.`;
+  return "Nesta versão de demonstração eu respondo sobre plantio, pulverização, chuva e veranico. Na versão completa, uma IA vai entender perguntas livres sobre a sua fazenda.";
+}
+function ask(q){if(!q.trim()||!D)return;add(q,"me");setTimeout(()=>bot(answer(q)),250)}
+["Dá para plantar soja esta semana?","Posso pulverizar amanhã?","Quanto choveu?","Tem risco de veranico?"].forEach(t=>{const b=document.createElement("button");b.type="button";b.textContent=t;b.onclick=()=>ask(t);$("chips").appendChild(b)});
+$("ask").addEventListener("submit",e=>{e.preventDefault();ask($("q").value);$("q").value=""});
+sel.addEventListener("change",()=>{try{localStorage.setItem("cc_mun",sel.value)}catch(e){}load(+sel.value)});
+load(+sel.value);
+loadPortfolio();
+</script>
+</body>
+</html>
